@@ -1,5 +1,5 @@
-import { LitElement, html, css, nothing } from "lit";
-import { customElement, property, state } from "lit/decorators.js";
+import { LitElement, html, css, nothing, type PropertyValues } from "lit";
+import { property, state } from "lit/decorators.js";
 import type { HomeAssistant } from "custom-card-helpers";
 
 import "./ha-gallery-editor.js";
@@ -19,16 +19,21 @@ declare global {
 export type HaGalleryConfig = {
   type: "custom:ha-gallery";
   title?: string;
+  /** Optional Media Source id to open first (e.g. `media-source://media_source/local`). */
+  media_content_id?: string;
 };
 
 window.customCards = window.customCards || [];
-window.customCards.push({
-  type: "custom:ha-gallery",
-  name: "HA Gallery",
-  description: "Gallery frontend for Home Assistant",
-});
+if (
+  !window.customCards.some((c) => c.type === "custom:ha-gallery")
+) {
+  window.customCards.push({
+    type: "custom:ha-gallery",
+    name: "HA Gallery",
+    description: "Gallery frontend for Home Assistant",
+  });
+}
 
-@customElement("ha-gallery")
 export class HaGallery extends LitElement {
   @property({ attribute: false }) public hass!: HomeAssistant;
 
@@ -47,13 +52,29 @@ export class HaGallery extends LitElement {
     this._config = config;
   }
 
-  connectedCallback(): void {
-    super.connectedCallback();
-    this._loadRoot();
+  protected updated(changedProperties: PropertyValues): void {
+    super.updated(changedProperties);
+    if (!this._config) return;
+    if (changedProperties.has("hass")) {
+      const prevHass = changedProperties.get("hass") as HomeAssistant | undefined;
+      if (!prevHass?.connection && this.hass?.connection) {
+        void this._loadRoot();
+      }
+    }
+    if (changedProperties.has("_config") && this.hass?.connection) {
+      const prevCfg = changedProperties.get("_config") as HaGalleryConfig | undefined;
+      if (prevCfg?.media_content_id !== this._config?.media_content_id) {
+        void this._loadRoot();
+      }
+    }
+  }
+
+  private _initialBrowseId(): string {
+    return (this._config?.media_content_id ?? "").trim();
   }
 
   private async _loadRoot(): Promise<void> {
-    await this._browse("");
+    await this._browse(this._initialBrowseId());
   }
 
   private async _browse(mediaContentId: string): Promise<void> {
@@ -96,13 +117,14 @@ export class HaGallery extends LitElement {
   }
 
   private _breadcrumbClick(index: number): void {
-    const target = index < 0 ? "" : this._breadcrumb[index].id;
-    this._breadcrumb = this._breadcrumb.slice(0, index);
-    if (target) {
-      this._browse(target);
-    } else {
-      this._loadRoot();
+    if (index < 0) {
+      this._breadcrumb = [];
+      void this._loadRoot();
+      return;
     }
+    const target = this._breadcrumb[index].id;
+    this._breadcrumb = this._breadcrumb.slice(0, index + 1);
+    void this._browse(target);
   }
 
   private _imageUrl(item: BrowseMediaSource): string {
@@ -484,4 +506,8 @@ export class HaGallery extends LitElement {
         : ""}
     `;
   }
+}
+
+if (!customElements.get("ha-gallery")) {
+  customElements.define("ha-gallery", HaGallery);
 }

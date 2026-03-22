@@ -1,9 +1,8 @@
 import { LitElement, html, css } from "lit";
-import { customElement, property, state } from "lit/decorators.js";
+import { property, state } from "lit/decorators.js";
 import type { HomeAssistant, LovelaceCardEditor } from "custom-card-helpers";
 import type { HaGalleryConfig } from "./ha-gallery.js";
 
-@customElement("ha-gallery-editor")
 export class HaGalleryEditor extends LitElement implements LovelaceCardEditor {
   @property({ attribute: false }) public hass?: HomeAssistant;
 
@@ -27,6 +26,16 @@ export class HaGalleryEditor extends LitElement implements LovelaceCardEditor {
     this._fireChanged();
   }
 
+  private _mediaIdChanged(ev: CustomEvent): void {
+    if (!this._config) return;
+    const raw = (ev.target as HTMLInputElement).value.trim();
+    this._config = {
+      ...this._config,
+      media_content_id: raw || undefined,
+    };
+    this._fireChanged();
+  }
+
   private _fireChanged(): void {
     const event = new CustomEvent("config-changed", {
       detail: { config: this._config },
@@ -47,7 +56,19 @@ export class HaGalleryEditor extends LitElement implements LovelaceCardEditor {
           .placeholder=${"Gallery"}
           @input=${this._titleChanged}
         ></ha-textfield>
+        <ha-textfield
+          .label=${"Start folder (Media Source ID)"}
+          .value=${this._config.media_content_id ?? ""}
+          .placeholder=${"media-source://media_source/local"}
+          .helper=${"Leave empty to open the media browser root. Put images under the path set in configuration.yaml → homeassistant → media_dirs."}
+          helperPersistent
+          @input=${this._mediaIdChanged}
+        ></ha-textfield>
       </div>
     `;
   }
+}
+
+if (!customElements.get("ha-gallery-editor")) {
+  customElements.define("ha-gallery-editor", HaGalleryEditor);
 }

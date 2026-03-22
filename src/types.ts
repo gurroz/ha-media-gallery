@@ -31,8 +31,11 @@ export function isImageItem(item: BrowseMediaSource): boolean {
   return type.startsWith("image/");
 }
 
+/** Expandable items (including lazy-loaded entries with no `children` yet). */
 export function isFolderItem(item: BrowseMediaSource): boolean {
-  return item.can_expand && !!item.children;
+  if (!item.can_expand) return false;
+  if (isImageItem(item)) return false;
+  return true;
 }
 
 /** Build relative URL for media content (works with HA auth/session). */
