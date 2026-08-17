@@ -1,7 +1,7 @@
 {
   "name": "ha-media-gallery",
   "type": "module",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Gallery frontend for Home Assistant - installable via HACS",
   "repository": {
     "type": "git",
